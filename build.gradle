@@ -1,0 +1,135 @@
+plugins {
+	id 'java'
+	id 'application'
+	id 'maven-publish'
+	id 'java-library'
+	id 'signing'
+	id 'org.jreleaser' version '1.14.0'
+	id 'org.springframework.boot' version '3.3.4'
+	id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group 'io.github.yojo-generator'
+version = '0.0.1'
+
+application {
+	mainModule = 'ru.yojo.codegen.web'
+	mainClass = "ru.yojo.codegen.web.WebApplication"
+}
+
+mainClassName = "ru.yojo.codegen.web.WebApplication"
+
+publishing {
+	repositories {
+		maven {
+			url = layout.buildDirectory.dir('staging-deploy')
+		}
+	}
+	publications {
+		mavenJava(MavenPublication) {
+			groupId = 'io.github.yojo-generator'
+			artifactId = 'web'
+
+			from components.java
+			pom {
+				name = 'YOJO Generator'
+				description = "Web interface of YOJO"
+				url = 'https://github.com/yojo-generator/web'
+				licenses {
+					license {
+						name = 'The Apache License, Version 2.0'
+						url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+					}
+				}
+				developers {
+					developer {
+						name = 'Vladimir Morozkin'
+						email = 'jvmorozkin@gmail.com'
+						organization = 'YOJO-generator'
+						organizationUrl = 'https://github.com/yojo-generator'
+					}
+				}
+				scm {
+					connection = 'scm:git:git://github.com/yojo-generator/web.git'
+					developerConnection = 'scm:git:ssh://github.com:yojo-generator/web.git'
+					url = 'https://github.com/yojo-generator/web/tree/master'
+				}
+			}
+		}
+	}
+}
+
+jreleaser {
+	project {
+		inceptionYear = "2024"
+		author("@vmorozkin")
+		tags = ['yaml-to-java', 'yaml-to-dto', 'yojo', 'asyncapi', 'asyncapi-generator', 'yaml-pojo', 'pojo-builder', 'asyncapi-tools', 'yaml-parser']
+	}
+	signing {
+		active = 'ALWAYS'
+		armored = true
+		verify = true
+	}
+	release {
+		github {
+			skipRelease = true
+			skipTag = true
+		}
+	}
+	deploy {
+		maven {
+			mavenCentral {
+				sonatype {
+					active = 'ALWAYS'
+					url = 'https://central.sonatype.com/api/v1/publisher'
+					sign = true
+					setAuthorization("Basic")
+					checksums = true
+					sourceJar = true
+					javadocJar = true
+					verifyPom = true
+					retryDelay = 60
+					applyMavenCentralRules = false
+					stagingRepository('build/staging-deploy')
+				}
+			}
+		}
+	}
+}
+
+java {
+	withJavadocJar()
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+	mavenCentral()
+}
+
+jar {
+	manifest {
+		attributes "Main-Class": "$mainClassName"
+	}
+	zip64 = true
+	from {
+		configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
+		duplicatesStrategy(DuplicatesStrategy.INCLUDE)
+	}
+}
+
+dependencies {
+	implementation 'io.github.yojo-generator:generator:1.0.3'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	compileOnly 'org.projectlombok:lombok:1.18.26'
+	testCompileOnly 'org.projectlombok:lombok:1.18.26'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
